@@ -1,6 +1,7 @@
 import pygame
 from pygame.sprite import Sprite
-from game.utils.constants import SPACESHIP
+import time
+from game.utils.constants import SPACESHIP, SPACESHIP_SHIELD
 from game.components.bullet import Bullet
 
 class Spaceship(Sprite):
@@ -19,6 +20,15 @@ class Spaceship(Sprite):
         self.shoot_delay = 500  # Tiempo de espera entre disparos
         self.last_shot = pygame.time.get_ticks()
         self.bullets = []
+        
+        # Constantes del escudo
+        self.DURACION_ESCUDO = 15
+        self.TIEMPO_RECARGA = 5
+        self.escudo_activo = False
+        self.tiempo_ultimo_uso = 0
+
+        # Sprite del escudo
+        self.shield_sprite = pygame.transform.scale(SPACESHIP_SHIELD, (self.image_width, self.image_height))
 
     def update(self, events):
         # Actualizar la posición de la nave espacial según los eventos de teclado recibidos
@@ -47,6 +57,13 @@ class Spaceship(Sprite):
         if events[pygame.K_SPACE]:
             self.shoot()
 
+        # Si se presiona la tecla F, activar el escudo
+        if events[pygame.K_f]:
+            self.activar_escudo()
+
+        # Actualizar el estado del escudo
+        self.actualizar_escudo()
+
     def shoot(self):
         # Obtener el tiempo actual
         current_time = pygame.time.get_ticks()
@@ -68,5 +85,48 @@ class Spaceship(Sprite):
     def draw(self, screen):
         # Dibujar la nave espacial en la pantalla
         screen.blit(self.image, (self.rect.x, self.rect.y))
+
+        # Dibujar el escudo si está activo
+        if self.escudo_activo:
+            screen.blit(self.shield_sprite, (self.rect.x, self.rect.y))
+
         # Asegurarse de que la nave espacial permanezca dentro de los límites de la pantalla
         self.rect.clamp_ip(self.screen.get_rect())
+
+        # Mostrar el tiempo restante del escudo debajo de la nave espacial
+        if self.escudo_activo:
+            tiempo_restante = max(0, self.DURACION_ESCUDO - (time.time() - self.tiempo_ultimo_uso))
+            font = pygame.font.Font(None, 24)
+            text = font.render(f"Escudo: {int(tiempo_restante)}s", True, (255, 255, 255))
+            text_rect = text.get_rect()
+            text_rect.centerx = self.rect.centerx
+            text_rect.y = self.rect.bottom + 5
+            screen.blit(text, text_rect)
+
+    def activar_escudo(self):
+        if time.time() - self.tiempo_ultimo_uso >= self.TIEMPO_RECARGA:
+            self.escudo_activo = True
+            self.tiempo_ultimo_uso = time.time()
+            print("Escudo activado.")
+
+    def desactivar_escudo(self):
+        self.escudo_activo = False
+        print("Escudo desactivado.")
+
+    def colisionar(self):
+        if self.escudo_activo:
+            print("La nave ha colisionado, pero el escudo la protegió.")
+        else:
+            print("La nave ha colisionado y su escudo no estaba activado.")
+
+    def recibir_disparo(self):
+        if self.escudo_activo:
+            print("La nave ha recibido un disparo, pero el escudo lo ha bloqueado.")
+        else:
+            print("La nave ha recibido un disparo y su escudo no estaba activado.")
+
+    def actualizar_escudo(self):
+        if self.escudo_activo:
+            tiempo_transcurrido = time.time() - self.tiempo_ultimo_uso
+            if tiempo_transcurrido >= self.DURACION_ESCUDO:
+                self.desactivar_escudo()
